@@ -1,37 +1,31 @@
 # KiraziumEmotes
 
-KiraziumEmotes is a modular emote framework for modern Paper servers.
+KiraziumEmotes is a modular, server-side emote framework for modern Paper servers.
 
-## Project goals
+## Non-negotiable client policy
 
-- Emote rendering itself is server-side through ModelEngine; players do not need a client mod just to see/play an emote through commands.
-- Optional `KiraziumEmotesClient` provides the G-key radial wheel. A Paper plugin cannot receive an otherwise unbound keyboard key from a vanilla client.
+KiraziumEmotes is a **plugin-only** project. Players must not install Fabric, Forge, NeoForge or any KiraziumEmotes client mod.
+
+- `/emotes` (also `/emote`) opens the server-side emote menu.
+- ModelEngine is the first animation renderer.
+- Nexo, ItemsAdder and Oraxen are optional server integrations for assets/items/resource-pack content.
+- Reference screenshots are treated only as visual/layout inspiration. Their emote names or animations are never copied into the project unless explicitly requested.
+
+A normal Paper plugin cannot read an otherwise-unbound keyboard key such as `G` from an unmodified vanilla client, so KiraziumEmotes does not implement or require a G-key bridge.
+
+## Current foundation
+
 - Paper 26.1.2 / Java 25 baseline.
-- First-class ModelEngine animation backend.
-- Optional Nexo, ItemsAdder and Oraxen integrations.
-- Clean public API so other plugins can start/stop emotes.
-- Safe lifecycle handling for movement, damage, teleport, quit and plugin reloads.
+- ModelEngine R4.1.1 renderer.
+- ModelEngine PLAYER_LIMB skin binding.
+- Runtime detection for ModelEngine, Nexo, ItemsAdder and Oraxen.
+- Nexo, ItemsAdder and Oraxen item asset providers.
+- Per-player emote sessions and safe cancellation.
+- `/emotes` server-side inventory selector.
+- `/emote <id>`, `/emote stop` and `/emote list` direct commands.
+- Public Bukkit service API.
 
-## Current test milestone
-
-The first bundled test emote is `floss`:
-
-- ModelEngine model: `player_floss`
-- animation: `dance`
-- player skin is applied through ModelEngine PlayerLimb behaviors
-- `/emote floss` starts it
-- `/emote stop`, movement, damage, teleport, quit or death stops it
-- the optional Fabric client opens an eight-slot radial menu with `G` and currently exposes The Floss in the first slot
-
-On first server start KiraziumEmotes copies the bundled verified `player_floss.bbmodel` into ModelEngine's `blueprints` directory if that file is not already present. Existing administrator files are never overwritten. Because ModelEngine has already loaded by that point, restart the server once after the first installation before testing the bundled emote.
-
-### Nexo + ModelEngine PlayerLimb requirement
-
-Nexo automatically imports ModelEngine's generated resource pack, but Nexo excludes ModelEngine core shaders by default. ModelEngine PlayerLimb rendering needs those shaders. When using Nexo, disable:
-
-`Pack.import.modelengine.exclude_shaders`
-
-so the ModelEngine shaders are included in the merged pack. Restart/rebuild the resource pack after changing it.
+No third-party test dance or reference-image emote is bundled. Emotes are loaded from `emotes.yml` and must point to animations that actually exist in the selected renderer. An original built-in animation library can be developed separately and verified before release.
 
 ## Compatibility target
 
@@ -43,7 +37,6 @@ so the ModelEngine shaders are included in the merged pack. Restart/rebuild the 
 | Nexo | 1.28.0 adapter target |
 | ItemsAdder API | 4.0.18-beta-10 |
 | Oraxen | 1.218.0 adapter target |
-| Fabric client bridge | Minecraft 26.1.2, Loader 0.19.5, Fabric API 0.155.3+26.1.2 |
 
 Compatibility targets are development targets, not blanket claims for every historical release.
 
@@ -53,16 +46,12 @@ Compatibility targets are development targets, not blanket claims for every hist
 - `render` — animation backends (ModelEngine first).
 - `assets` — item providers for Nexo, ItemsAdder and Oraxen.
 - `integration` — runtime detection and version-aware adapters.
-- `command` — `/emote` command and admin tools.
-- `client/` — optional Fabric G-key radial wheel.
-
-## Third-party content
-
-The initial `player_floss.bbmodel` test blueprint is pinned to an MIT-licensed upstream revision. See `THIRD_PARTY_NOTICES.md` for attribution and license text.
+- `ui` — plugin-only inventory menus.
+- `command` — `/emote` and `/emotes` entry points.
 
 ## Status
 
-Early development (`0.1.0-SNAPSHOT`). CI must compile both the Paper plugin and the optional Fabric client bridge before a test artifact is considered usable.
+Early development (`0.1.0-SNAPSHOT`). CI compiles the Paper plugin on Java 25 before a test artifact is considered usable.
 
 ## License
 
