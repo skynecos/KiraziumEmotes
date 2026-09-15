@@ -29,7 +29,7 @@ import java.util.List;
  * KiraziumEmotes never requires a client mod or custom key binding.
  */
 public final class EmoteMenu implements Listener {
-    private static final String TITLE = "Kirazium Emotes";
+    private static final Component TITLE = Component.text("Kirazium Emotes", NamedTextColor.LIGHT_PURPLE);
     private static final int SIZE = 54;
     private static final int MAX_EMOTES_PER_PAGE = 45;
 
