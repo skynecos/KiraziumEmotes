@@ -1,0 +1,24 @@
+name: KiraziumEmotes
+version: '${version}'
+main: com.kirazium.emotes.KiraziumEmotesPlugin
+api-version: '26.1'
+authors: [skynecos]
+description: Modular server-side emote framework for Kirazium.
+website: https://github.com/skynecos/KiraziumEmotes
+softdepend:
+  - ModelEngine
+  - Nexo
+  - ItemsAdder
+  - Oraxen
+commands:
+  emote:
+    description: Play, stop or list emotes.
+    usage: /emote <id|stop|list>
+    permission: kiraziumemotes.use
+permissions:
+  kiraziumemotes.use:
+    description: Allows using KiraziumEmotes.
+    default: true
+  kiraziumemotes.admin:
+    description: Administrative KiraziumEmotes permission.
+    default: op
