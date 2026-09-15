@@ -2,6 +2,12 @@
 
 KiraziumEmotes is intended to grow as a modular emote platform rather than a single command plugin.
 
+## Product constraint
+
+- [x] Plugin-only: players never need a KiraziumEmotes client mod
+- [x] `/emotes` is the primary server-side menu entry point
+- [x] Reference menu images are visual/layout references only; their emote content is not imported implicitly
+
 ## M0 — Foundation
 
 - [x] Paper 26.1.2 / Java 25 baseline
@@ -20,7 +26,8 @@ KiraziumEmotes is intended to grow as a modular emote platform rather than a sin
 
 ## M1 — Emote presentation
 
-- [ ] Inventory GUI
+- [x] Server-side inventory GUI
+- [ ] Custom menu appearance using server resource-pack integrations
 - [ ] Categories
 - [ ] Search and pagination
 - [ ] Favorites
@@ -33,6 +40,7 @@ KiraziumEmotes is intended to grow as a modular emote platform rather than a sin
 
 ## M2 — Animation quality
 
+- [ ] Original built-in animation library
 - [ ] Loop / one-shot modes
 - [ ] Entry and exit animation states
 - [ ] Camera-safe behavior
