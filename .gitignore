@@ -5,3 +5,7 @@ out/
 *.iml
 *.log
 .DS_Store
+
+# Licensed/private emote assets are injected into personal builds and must not be committed.
+src/main/resources/bundled/modelengine/*.bbmodel
+src/main/resources/bundled/emotes.yml
