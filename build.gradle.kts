@@ -5,6 +5,8 @@ plugins {
 group = "com.kirazium"
 version = "0.1.0-SNAPSHOT"
 
+val pluginVersion = version.toString()
+
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
@@ -39,8 +41,9 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.processResources {
+    inputs.property("version", pluginVersion)
     filesMatching("plugin.yml") {
-        expand("version" to project.version)
+        expand("version" to pluginVersion)
     }
 }
 
