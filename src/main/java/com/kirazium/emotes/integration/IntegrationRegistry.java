@@ -18,7 +18,7 @@ public final class IntegrationRegistry {
         for (IntegrationType type : IntegrationType.values()) {
             Plugin plugin = pluginManager.getPlugin(type.pluginName());
             boolean installed = plugin != null && plugin.isEnabled();
-            String version = plugin == null ? "-" : plugin.getDescription().getVersion();
+            String version = plugin == null ? "-" : plugin.getPluginMeta().getVersion();
             statuses.put(type, new IntegrationStatus(type, installed, version));
         }
     }
