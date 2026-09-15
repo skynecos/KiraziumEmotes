@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'dev/**'
   pull_request:
 
 permissions:
@@ -29,7 +28,7 @@ jobs:
           gradle-version: '9.7.1'
 
       - name: Build server plugin
-        run: gradle clean build --stacktrace
+        run: gradle clean build --stacktrace --warning-mode all
 
       - name: Upload server plugin
         uses: actions/upload-artifact@v7
