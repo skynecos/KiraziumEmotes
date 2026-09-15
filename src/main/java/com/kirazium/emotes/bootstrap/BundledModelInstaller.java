@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 
 public final class BundledModelInstaller {
     private static final String RESOURCE_PATH = "bundled/modelengine/player_floss.bbmodel";
@@ -48,7 +47,7 @@ public final class BundledModelInstaller {
                 plugin.getLogger().severe("Bundled resource is missing from KiraziumEmotes JAR: " + RESOURCE_PATH);
                 return false;
             }
-            Files.copy(input, target.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+            Files.copy(input, target.toPath());
             plugin.getLogger().info("Installed verified ModelEngine blueprint: " + target.getAbsolutePath());
             return true;
         } catch (IOException exception) {
