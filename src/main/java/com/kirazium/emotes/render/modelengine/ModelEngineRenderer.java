@@ -42,7 +42,7 @@ public final class ModelEngineRenderer implements EmoteRenderer {
         }
 
         ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(player);
-        if (modeledEntity.getModel(definition.modelId()) != null) {
+        if (modeledEntity.getModel(definition.modelId()).isPresent()) {
             throw new IllegalStateException("Model '" + definition.modelId() + "' is already attached to player " + player.getName());
         }
 
@@ -52,15 +52,19 @@ public final class ModelEngineRenderer implements EmoteRenderer {
         try {
             modeledEntity.addModel(activeModel, true);
             modeledEntity.setBaseEntityVisible(false);
-            activeModel.getAnimationHandler().playAnimation(
+            boolean started = activeModel.getAnimationHandler().playAnimation(
                     definition.animation(),
                     definition.lerpIn(),
                     definition.lerpOut(),
                     definition.speed(),
                     true
             );
+            if (!started) {
+                throw new IllegalStateException("ModelEngine refused animation '" + definition.animation() + "'");
+            }
         } catch (RuntimeException exception) {
             modeledEntity.removeModel(definition.modelId());
+            activeModel.destroy();
             modeledEntity.setBaseEntityVisible(previousBaseVisibility);
             throw exception;
         }
@@ -72,6 +76,7 @@ public final class ModelEngineRenderer implements EmoteRenderer {
                 activeModel.getAnimationHandler().stopAnimation(definition.animation());
             } finally {
                 modeledEntity.removeModel(definition.modelId());
+                activeModel.destroy();
                 modeledEntity.setBaseEntityVisible(previousBaseVisibility);
             }
         };
