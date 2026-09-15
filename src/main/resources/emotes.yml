@@ -1,0 +1,19 @@
+# KiraziumEmotes definitions.
+# No example emote is enabled by default because model/animation IDs are server-specific.
+#
+# Example:
+# emotes:
+#   wave:
+#     display-name: "El Salla"
+#     renderer: modelengine
+#     model: kirazium_player
+#     animation: wave
+#     duration-ticks: 50
+#     lerp-in: 0.10
+#     lerp-out: 0.10
+#     speed: 1.0
+#     cancel-on-move: true
+#     cancel-on-damage: true
+#     cancel-on-teleport: true
+
+emotes: {}
