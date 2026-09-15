@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev/bootstrap-core
   pull_request:
 
 permissions:
@@ -36,3 +37,4 @@ jobs:
           name: KiraziumEmotes-server
           path: build/libs/KiraziumEmotes-*.jar
           if-no-files-found: error
+

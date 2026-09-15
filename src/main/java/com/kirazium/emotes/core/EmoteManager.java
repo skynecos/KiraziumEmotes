@@ -53,6 +53,8 @@ public final class EmoteManager {
                 );
                 session.timeoutTask = timeoutTask;
             }
+            plugin.getLogger().info("Started emote '" + definition.id() + "' (model="
+                    + definition.modelId() + ", animation=" + definition.animation() + ") for " + player.getName());
             return PlayResult.SUCCESS;
         } catch (Exception exception) {
             plugin.getLogger().log(Level.SEVERE,
@@ -75,6 +77,8 @@ public final class EmoteManager {
 
         try {
             session.handle.stop();
+            plugin.getLogger().info("Stopped emote '" + session.definition.id() + "' for player "
+                    + playerId + " (reason=" + reason + ")");
         } catch (Exception exception) {
             plugin.getLogger().log(Level.WARNING,
                     "Failed to stop emote '" + session.definition.id() + "' (reason=" + reason + ")", exception);
@@ -119,3 +123,4 @@ public final class EmoteManager {
         }
     }
 }
+
