@@ -62,15 +62,15 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             );
 
             modeledEntity.setBaseEntityVisible(false);
-            boolean started = activeModel.getAnimationHandler().playAnimation(
+            activeModel.getAnimationHandler().playAnimation(
                     definition.animation(),
                     definition.lerpIn(),
                     definition.lerpOut(),
                     definition.speed(),
                     true
             );
-            if (!started) {
-                throw new IllegalStateException("ModelEngine refused animation '" + definition.animation() + "'");
+            if (!activeModel.getAnimationHandler().isPlayingAnimation(definition.animation())) {
+                throw new IllegalStateException("ModelEngine did not start animation '" + definition.animation() + "'");
             }
         } catch (RuntimeException exception) {
             modeledEntity.removeModel(definition.modelId());
