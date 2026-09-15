@@ -8,6 +8,7 @@ import com.kirazium.emotes.render.RenderHandle;
 import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.model.ActiveModel;
 import com.ticxo.modelengine.api.model.ModeledEntity;
+import com.ticxo.modelengine.api.model.bone.BoneBehaviorTypes;
 import org.bukkit.entity.Player;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -50,7 +51,16 @@ public final class ModelEngineRenderer implements EmoteRenderer {
         ActiveModel activeModel = ModelEngineAPI.createActiveModel(definition.modelId());
 
         try {
-            modeledEntity.addModel(activeModel, true);
+            // Emotes must not replace the player's vanilla hitbox.
+            modeledEntity.addModel(activeModel, false);
+
+            // A ModelEngine model can expose PLAYER_LIMB behaviors on its bones.
+            // When present, bind those limbs to the actual player's skin.
+            activeModel.getBones().values().forEach(bone ->
+                    bone.getBoneBehavior(BoneBehaviorTypes.PLAYER_LIMB)
+                            .ifPresent(limb -> limb.setTexture(player))
+            );
+
             modeledEntity.setBaseEntityVisible(false);
             boolean started = activeModel.getAnimationHandler().playAnimation(
                     definition.animation(),
