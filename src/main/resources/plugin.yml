@@ -12,8 +12,9 @@ softdepend:
   - Oraxen
 commands:
   emote:
-    description: Play, stop or list emotes.
-    usage: /emote <id|stop|list>
+    aliases: [emotes]
+    description: Opens the emote menu or controls an active emote.
+    usage: /emotes or /emote <id|stop|list>
     permission: kiraziumemotes.use
 permissions:
   kiraziumemotes.use:
