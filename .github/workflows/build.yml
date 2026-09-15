@@ -28,5 +28,22 @@ jobs:
         with:
           gradle-version: '9.7.1'
 
-      - name: Build
+      - name: Build server plugin
         run: gradle clean build --stacktrace
+
+      - name: Build Fabric client bridge
+        run: gradle -p client clean build --stacktrace
+
+      - name: Upload server plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: KiraziumEmotes-server
+          path: build/libs/KiraziumEmotes-*.jar
+          if-no-files-found: error
+
+      - name: Upload 26.1.2 client bridge
+        uses: actions/upload-artifact@v7
+        with:
+          name: KiraziumEmotes-client-26.1.2
+          path: client/build/libs/KiraziumEmotesClient-*.jar
+          if-no-files-found: error
