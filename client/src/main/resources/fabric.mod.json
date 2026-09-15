@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "kiraziumemotes_client",
+  "version": "${version}",
+  "name": "KiraziumEmotes Client",
+  "description": "Optional KiraziumEmotes client bridge for the G-key radial emote wheel.",
+  "authors": ["skynecos"],
+  "contact": {
+    "sources": "https://github.com/skynecos/KiraziumEmotes"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.kirazium.emotes.client.KiraziumEmotesClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
