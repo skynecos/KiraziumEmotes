@@ -6,6 +6,8 @@ import com.kirazium.emotes.asset.AssetProviderRegistry;
 import com.kirazium.emotes.asset.itemsadder.ItemsAdderAssetProvider;
 import com.kirazium.emotes.asset.nexo.NexoAssetProvider;
 import com.kirazium.emotes.asset.oraxen.OraxenAssetProvider;
+import com.kirazium.emotes.bootstrap.BundledEmoteDefaults;
+import com.kirazium.emotes.bootstrap.BundledModelInstaller;
 import com.kirazium.emotes.command.EmoteCommand;
 import com.kirazium.emotes.config.EmoteConfigLoader;
 import com.kirazium.emotes.core.EmoteDefinition;
@@ -31,11 +33,20 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
     private EmoteManager emoteManager;
     private EmoteRegistry emoteRegistry;
     private AssetProviderRegistry assetProviders;
+    private BundledModelInstaller.Result bundledModelResult = BundledModelInstaller.Result.NO_BUNDLED_MODEL;
+
+    @Override
+    public void onLoad() {
+        // Paper guarantees every plugin's onLoad runs before any plugin's onEnable.
+        // Installing here lets ModelEngine see a bundled blueprint during its normal startup import.
+        bundledModelResult = new BundledModelInstaller(this).installDuringLoad();
+    }
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        ensureEmotesFile();
+        File emotesFile = ensureEmotesFile();
+        int bundledDefinitionsAdded = new BundledEmoteDefaults(this).mergeInto(emotesFile);
 
         IntegrationRegistry integrations = new IntegrationRegistry(getServer().getPluginManager());
         integrations.scan();
@@ -58,7 +69,11 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         registerCommand(emoteMenu);
         registerApi();
         logIntegrations(integrations);
+        logBundledModelResult();
 
+        if (bundledDefinitionsAdded > 0) {
+            getLogger().info("Added " + bundledDefinitionsAdded + " bundled emote definition(s) without overwriting existing entries.");
+        }
         getLogger().info("KiraziumEmotes enabled. Loaded " + loaded + " emote(s).");
     }
 
@@ -82,11 +97,12 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         }
     }
 
-    private void ensureEmotesFile() {
+    private File ensureEmotesFile() {
         File file = new File(getDataFolder(), "emotes.yml");
         if (!file.exists()) {
             saveResource("emotes.yml", false);
         }
+        return file;
     }
 
     private void registerCommand(EmoteMenu emoteMenu) {
@@ -138,6 +154,18 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
             } else {
                 getLogger().info(type.pluginName() + " not detected; integration disabled.");
             }
+        }
+    }
+
+    private void logBundledModelResult() {
+        switch (bundledModelResult) {
+            case INSTALLED -> getLogger().info("Installed bundled ModelEngine blueprint before plugin enable.");
+            case UPDATED -> getLogger().info("Updated managed ModelEngine blueprint before plugin enable.");
+            case UNCHANGED -> getLogger().info("Bundled ModelEngine blueprint is already current.");
+            case MODEL_ENGINE_MISSING -> getLogger().warning("ModelEngine is not installed; bundled blueprint was not installed.");
+            case CONFLICT -> getLogger().severe("Bundled ModelEngine blueprint conflicts with a modified/unmanaged file; it was not overwritten.");
+            case FAILED -> getLogger().severe("Bundled ModelEngine blueprint installation failed. Check earlier log entries.");
+            case NO_BUNDLED_MODEL -> getLogger().info("No private bundled ModelEngine blueprint is present in this build.");
         }
     }
 }
