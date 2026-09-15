@@ -6,7 +6,6 @@ import com.kirazium.emotes.asset.AssetProviderRegistry;
 import com.kirazium.emotes.asset.itemsadder.ItemsAdderAssetProvider;
 import com.kirazium.emotes.asset.nexo.NexoAssetProvider;
 import com.kirazium.emotes.asset.oraxen.OraxenAssetProvider;
-import com.kirazium.emotes.bootstrap.BundledModelInstaller;
 import com.kirazium.emotes.command.EmoteCommand;
 import com.kirazium.emotes.config.EmoteConfigLoader;
 import com.kirazium.emotes.core.EmoteDefinition;
@@ -18,6 +17,7 @@ import com.kirazium.emotes.integration.IntegrationType;
 import com.kirazium.emotes.listener.EmoteLifecycleListener;
 import com.kirazium.emotes.render.RendererRegistry;
 import com.kirazium.emotes.render.modelengine.ModelEngineRenderer;
+import com.kirazium.emotes.ui.EmoteMenu;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
@@ -40,11 +40,6 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         IntegrationRegistry integrations = new IntegrationRegistry(getServer().getPluginManager());
         integrations.scan();
 
-        boolean installedBundledModel = false;
-        if (integrations.available(IntegrationType.MODEL_ENGINE)) {
-            installedBundledModel = new BundledModelInstaller(this).installIfNeeded();
-        }
-
         RendererRegistry renderers = new RendererRegistry();
         if (integrations.available(IntegrationType.MODEL_ENGINE)) {
             renderers.register(new ModelEngineRenderer(integrations));
@@ -57,16 +52,14 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         int loaded = new EmoteConfigLoader(this).loadInto(emoteRegistry);
         emoteManager = new EmoteManager(this, emoteRegistry, renderers);
 
+        EmoteMenu emoteMenu = new EmoteMenu(this, emoteManager, emoteRegistry);
         getServer().getPluginManager().registerEvents(new EmoteLifecycleListener(emoteManager), this);
-        registerCommand();
+        getServer().getPluginManager().registerEvents(emoteMenu, this);
+        registerCommand(emoteMenu);
         registerApi();
         logIntegrations(integrations);
 
         getLogger().info("KiraziumEmotes enabled. Loaded " + loaded + " emote(s).");
-        if (installedBundledModel) {
-            getLogger().warning("A new ModelEngine blueprint was installed after ModelEngine had already loaded.");
-            getLogger().warning("Restart the server once before testing /emote floss so ModelEngine and the resource pack can rebuild cleanly.");
-        }
     }
 
     @Override
@@ -96,12 +89,12 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         }
     }
 
-    private void registerCommand() {
+    private void registerCommand(EmoteMenu emoteMenu) {
         PluginCommand command = getCommand("emote");
         if (command == null) {
             throw new IllegalStateException("Command 'emote' is missing from plugin.yml");
         }
-        EmoteCommand executor = new EmoteCommand(emoteManager, emoteRegistry);
+        EmoteCommand executor = new EmoteCommand(emoteManager, emoteRegistry, emoteMenu);
         command.setExecutor(executor);
         command.setTabCompleter(executor);
     }
