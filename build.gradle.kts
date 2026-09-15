@@ -1,3 +1,6 @@
+import java.net.URI
+import java.security.MessageDigest
+
 plugins {
     java
 }
@@ -39,7 +42,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 val generatedResources = layout.buildDirectory.dir("generated/kiraziumemotes-resources")
-val prepareBundledFloss by tasks.registering {
+val prepareBundledFloss = tasks.register("prepareBundledFloss") {
     val outputFile = generatedResources.map { it.file("bundled/modelengine/player_floss.bbmodel") }
     outputs.file(outputFile)
 
@@ -47,17 +50,17 @@ val prepareBundledFloss by tasks.registering {
         val target = outputFile.get().asFile
         target.parentFile.mkdirs()
 
-        val source = java.net.URI(
+        val source = URI(
             "https://raw.githubusercontent.com/Utruna/DanseAvecLaStare/3d6edc427ea45a87160a003ab2683daa1681d397/models/player_floss.bbmodel"
         ).toURL()
-        val bytes = source.openStream().use { it.readBytes() }
+        val bytes: ByteArray = source.openStream().use { input -> input.readBytes() }
 
         // Verify the immutable Git blob, not merely the URL. Expected blob SHA was read
         // from the pinned upstream commit before this task was added.
-        val digest = java.security.MessageDigest.getInstance("SHA-1")
+        val digest = MessageDigest.getInstance("SHA-1")
         digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
         digest.update(bytes)
-        val gitBlobSha = digest.digest().joinToString("") { "%02x".format(it) }
+        val gitBlobSha = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
         check(gitBlobSha == "4bdeedb41accfa6b7daeaa44abddc84f6f55fd67") {
             "player_floss.bbmodel failed pinned Git blob verification: $gitBlobSha"
         }
