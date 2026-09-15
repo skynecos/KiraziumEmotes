@@ -4,6 +4,7 @@ import com.kirazium.emotes.api.PlayResult;
 import com.kirazium.emotes.core.EmoteDefinition;
 import com.kirazium.emotes.core.EmoteManager;
 import com.kirazium.emotes.core.EmoteRegistry;
+import com.kirazium.emotes.ui.EmoteMenu;
 import com.kirazium.emotes.util.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -20,10 +21,12 @@ import java.util.Locale;
 public final class EmoteCommand implements CommandExecutor, TabCompleter {
     private final EmoteManager manager;
     private final EmoteRegistry registry;
+    private final EmoteMenu menu;
 
-    public EmoteCommand(EmoteManager manager, EmoteRegistry registry) {
+    public EmoteCommand(EmoteManager manager, EmoteRegistry registry, EmoteMenu menu) {
         this.manager = manager;
         this.registry = registry;
+        this.menu = menu;
     }
 
     @Override
@@ -34,7 +37,13 @@ public final class EmoteCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length == 0 || args[0].equalsIgnoreCase("list")) {
+        // /emote and /emotes are both server-side entry points to the menu.
+        if (args.length == 0) {
+            menu.open(player);
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("list")) {
             List<String> ids = registry.all().stream().map(EmoteDefinition::id).toList();
             if (ids.isEmpty()) {
                 Messages.info(player, "Henüz yüklü bir emote yok.");
@@ -55,7 +64,7 @@ public final class EmoteCommand implements CommandExecutor, TabCompleter {
 
         PlayResult result = manager.play(player, args[0]);
         switch (result) {
-            case SUCCESS -> Messages.success(player, "Emote başlatıldı: " + args[0].toLowerCase(Locale.ROOT));
+            case SUCCESS -> Messages.success(player, "Emote başlatıldı.");
             case NOT_FOUND -> Messages.error(player, "Böyle bir emote bulunamadı.");
             case ALREADY_PLAYING -> Messages.error(player, "Önce mevcut emoteyi durdurmalısın.");
             case RENDERER_UNAVAILABLE -> Messages.error(player, "Bu emote için gerekli animasyon sistemi aktif değil.");
