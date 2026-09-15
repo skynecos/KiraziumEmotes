@@ -27,7 +27,12 @@ public final class BundledModelInstaller {
 
     private static final String TARGET_DIRECTORY = "kiraziumemotes";
     private static final String TARGET_FILE = MODEL_ID + ".bbmodel";
-    private static final String MARKER_FILE = ".kirazium_emotes.sha256";
+
+    // Never place installer metadata inside ModelEngine/blueprints: ModelEngine scans every
+    // file there and reports unknown formats for non-blueprint files.
+    private static final String MANAGED_DIRECTORY = ".managed";
+    private static final String MARKER_FILE = "modelengine-" + MODEL_ID + ".sha256";
+    private static final String LEGACY_MARKER_FILE = ".kirazium_emotes.sha256";
 
     private final JavaPlugin plugin;
 
@@ -52,29 +57,37 @@ public final class BundledModelInstaller {
             return Result.FAILED;
         }
 
-        Path directory = modelEngine.getDataFolder().toPath()
+        Path blueprintDirectory = modelEngine.getDataFolder().toPath()
                 .resolve("blueprints")
                 .resolve(TARGET_DIRECTORY);
-        Path target = directory.resolve(TARGET_FILE);
-        Path marker = directory.resolve(MARKER_FILE);
+        Path target = blueprintDirectory.resolve(TARGET_FILE);
+
+        Path managedDirectory = plugin.getDataFolder().toPath().resolve(MANAGED_DIRECTORY);
+        Path marker = managedDirectory.resolve(MARKER_FILE);
+        Path legacyMarker = blueprintDirectory.resolve(LEGACY_MARKER_FILE);
 
         try {
-            Files.createDirectories(directory);
+            Files.createDirectories(blueprintDirectory);
+            Files.createDirectories(managedDirectory);
 
             String bundledHash = sha256(bundled);
             if (Files.isRegularFile(target)) {
                 String currentHash = sha256(Files.readAllBytes(target));
                 if (currentHash.equals(bundledHash)) {
                     writeMarker(marker, bundledHash);
+                    Files.deleteIfExists(legacyMarker);
                     return Result.UNCHANGED;
                 }
 
-                if (!Files.isRegularFile(marker)) {
+                Path ownershipMarker = Files.isRegularFile(marker)
+                        ? marker
+                        : (Files.isRegularFile(legacyMarker) ? legacyMarker : null);
+                if (ownershipMarker == null) {
                     plugin.getLogger().severe("Refusing to overwrite unmanaged ModelEngine blueprint: " + target);
                     return Result.CONFLICT;
                 }
 
-                String managedHash = Files.readString(marker, StandardCharsets.UTF_8).trim();
+                String managedHash = Files.readString(ownershipMarker, StandardCharsets.UTF_8).trim();
                 if (!managedHash.equals(currentHash)) {
                     plugin.getLogger().severe("Refusing to overwrite modified KiraziumEmotes blueprint: " + target);
                     return Result.CONFLICT;
@@ -82,11 +95,13 @@ public final class BundledModelInstaller {
 
                 atomicWrite(target, bundled);
                 writeMarker(marker, bundledHash);
+                Files.deleteIfExists(legacyMarker);
                 return Result.UPDATED;
             }
 
             atomicWrite(target, bundled);
             writeMarker(marker, bundledHash);
+            Files.deleteIfExists(legacyMarker);
             return Result.INSTALLED;
         } catch (IOException | NoSuchAlgorithmException exception) {
             plugin.getLogger().log(Level.SEVERE, "Could not install KiraziumEmotes ModelEngine blueprint.", exception);
@@ -96,6 +111,7 @@ public final class BundledModelInstaller {
 
     private static void atomicWrite(Path target, byte[] bytes) throws IOException {
         Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+        Files.deleteIfExists(temp);
         Files.write(temp, bytes);
         try {
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
