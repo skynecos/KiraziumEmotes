@@ -24,6 +24,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -175,6 +176,7 @@ public final class ModelEngineRenderer implements EmoteRenderer {
 
     private static SkinBinding bindPlayerSkin(ActiveModel activeModel, Player player) {
         Set<PlayerLimb.Limb> playerLimbs = EnumSet.noneOf(PlayerLimb.Limb.class);
+        Set<String> nestedPlayerLimbs = new LinkedHashSet<>();
         int userLimbs = 0;
 
         for (ModelBone bone : activeModel.getBones().values()) {
@@ -183,6 +185,15 @@ public final class ModelEngineRenderer implements EmoteRenderer {
                 PlayerLimb limb = playerLimb.get();
                 limb.setTexture(player);
                 playerLimbs.add(limb.getLimbType());
+
+                ModelBone parent = bone.getParent();
+                while (parent != null) {
+                    if (parent.hasBoneBehavior(BoneBehaviorTypes.PLAYER_LIMB)) {
+                        nestedPlayerLimbs.add(bone.getBoneId());
+                        break;
+                    }
+                    parent = parent.getParent();
+                }
             }
 
             var userLimb = bone.getBoneBehavior(BoneBehaviorTypes.USER_LIMB);
@@ -193,7 +204,7 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             }
         }
 
-        return new SkinBinding(playerLimbs, userLimbs);
+        return new SkinBinding(playerLimbs, userLimbs, nestedPlayerLimbs);
     }
 
     private static void validateBundledPlayerModel(EmoteDefinition definition, SkinBinding binding) {
@@ -204,6 +215,10 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             Set<PlayerLimb.Limb> missing = EnumSet.copyOf(required);
             missing.removeAll(binding.playerLimbs());
             throw new IllegalStateException("Bundled ModelEngine model is missing PLAYER_LIMB behaviors: " + missing);
+        }
+        if (!binding.nestedPlayerLimbs().isEmpty()) {
+            throw new IllegalStateException("Bundled ModelEngine model nests PLAYER_LIMB bones under another "
+                    + "PLAYER_LIMB, which corrupts shader part ids: " + binding.nestedPlayerLimbs());
         }
     }
 
@@ -259,7 +274,11 @@ public final class ModelEngineRenderer implements EmoteRenderer {
         player.sendEquipmentChange(player, EquipmentSlot.OFF_HAND, equipment.getItemInOffHand());
     }
 
-    private record SkinBinding(Set<PlayerLimb.Limb> playerLimbs, int userLimbs) {
+    private record SkinBinding(
+            Set<PlayerLimb.Limb> playerLimbs,
+            int userLimbs,
+            Set<String> nestedPlayerLimbs
+    ) {
     }
 }
 
