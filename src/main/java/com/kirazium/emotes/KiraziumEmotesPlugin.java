@@ -2,6 +2,10 @@ package com.kirazium.emotes;
 
 import com.kirazium.emotes.api.KiraziumEmotesApi;
 import com.kirazium.emotes.api.PlayResult;
+import com.kirazium.emotes.asset.AssetProviderRegistry;
+import com.kirazium.emotes.asset.itemsadder.ItemsAdderAssetProvider;
+import com.kirazium.emotes.asset.nexo.NexoAssetProvider;
+import com.kirazium.emotes.asset.oraxen.OraxenAssetProvider;
 import com.kirazium.emotes.command.EmoteCommand;
 import com.kirazium.emotes.config.EmoteConfigLoader;
 import com.kirazium.emotes.core.EmoteDefinition;
@@ -25,6 +29,7 @@ import java.util.Optional;
 public final class KiraziumEmotesPlugin extends JavaPlugin {
     private EmoteManager emoteManager;
     private EmoteRegistry emoteRegistry;
+    private AssetProviderRegistry assetProviders;
 
     @Override
     public void onEnable() {
@@ -38,6 +43,9 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         if (integrations.available(IntegrationType.MODEL_ENGINE)) {
             renderers.register(new ModelEngineRenderer(integrations));
         }
+
+        assetProviders = new AssetProviderRegistry();
+        registerAssetProviders(integrations);
 
         emoteRegistry = new EmoteRegistry();
         int loaded = new EmoteConfigLoader(this).loadInto(emoteRegistry);
@@ -57,6 +65,18 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
             emoteManager.stopAll();
         }
         getServer().getServicesManager().unregisterAll(this);
+    }
+
+    private void registerAssetProviders(IntegrationRegistry integrations) {
+        if (integrations.available(IntegrationType.NEXO)) {
+            assetProviders.register(new NexoAssetProvider(integrations));
+        }
+        if (integrations.available(IntegrationType.ITEMS_ADDER)) {
+            assetProviders.register(new ItemsAdderAssetProvider(integrations));
+        }
+        if (integrations.available(IntegrationType.ORAXEN)) {
+            assetProviders.register(new OraxenAssetProvider(integrations));
+        }
     }
 
     private void ensureEmotesFile() {
