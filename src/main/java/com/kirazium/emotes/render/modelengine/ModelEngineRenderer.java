@@ -17,7 +17,11 @@ import com.ticxo.modelengine.api.model.bone.type.UserLimb;
 import com.ticxo.modelengine.api.nms.entity.EntityHandler;
 import com.ticxo.modelengine.api.nms.entity.wrapper.BodyRotationController;
 import com.ticxo.modelengine.api.nms.entity.wrapper.TrackedEntity;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EntityEquipment;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -25,6 +29,16 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ModelEngineRenderer implements EmoteRenderer {
+    private static final ItemStack AIR = new ItemStack(Material.AIR);
+    private static final EquipmentSlot[] SELF_HIDDEN_EQUIPMENT = {
+            EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.FEET,
+            EquipmentSlot.HAND,
+            EquipmentSlot.OFF_HAND
+    };
+
     private final IntegrationRegistry integrations;
 
     public ModelEngineRenderer(IntegrationRegistry integrations) {
@@ -90,6 +104,13 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             }
             entityHandler.setForcedInvisible(player, true);
             modeledEntity.setBaseEntityVisible(false);
+
+            // ModelEngine cannot despawn a player from their own client because that
+            // entity owns the camera. Forced invisibility hides the skin but vanilla
+            // equipment remains visible and keeps the unanimated player yaw. Hide it
+            // only from the owning client; the real inventory and combat stats remain
+            // unchanged and other viewers already receive the base-entity despawn.
+            hideSelfEquipment(player);
 
             // Emotes must not replace the player's vanilla hitbox. The boolean is
             // overrideHitbox in ModelEngine R4.1.0/R4.1.1, not a render toggle.
@@ -216,7 +237,26 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             entityHandler.setForcedInvisible(player, previousForcedInvisible);
             modeledEntity.setBaseEntityVisible(previousBaseVisibility);
             rotationController.setPlayerMode(previousPlayerMode);
+            restoreSelfEquipment(player);
         }
+    }
+
+    private static void hideSelfEquipment(Player player) {
+        for (EquipmentSlot slot : SELF_HIDDEN_EQUIPMENT) {
+            player.sendEquipmentChange(player, slot, AIR);
+        }
+    }
+
+    private static void restoreSelfEquipment(Player player) {
+        if (!player.isOnline()) return;
+
+        EntityEquipment equipment = player.getEquipment();
+        player.sendEquipmentChange(player, EquipmentSlot.HEAD, equipment.getHelmet());
+        player.sendEquipmentChange(player, EquipmentSlot.CHEST, equipment.getChestplate());
+        player.sendEquipmentChange(player, EquipmentSlot.LEGS, equipment.getLeggings());
+        player.sendEquipmentChange(player, EquipmentSlot.FEET, equipment.getBoots());
+        player.sendEquipmentChange(player, EquipmentSlot.HAND, equipment.getItemInMainHand());
+        player.sendEquipmentChange(player, EquipmentSlot.OFF_HAND, equipment.getItemInOffHand());
     }
 
     private record SkinBinding(Set<PlayerLimb.Limb> playerLimbs, int userLimbs) {
