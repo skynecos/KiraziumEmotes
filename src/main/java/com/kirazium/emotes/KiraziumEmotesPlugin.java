@@ -6,6 +6,7 @@ import com.kirazium.emotes.asset.AssetProviderRegistry;
 import com.kirazium.emotes.asset.itemsadder.ItemsAdderAssetProvider;
 import com.kirazium.emotes.asset.nexo.NexoAssetProvider;
 import com.kirazium.emotes.asset.oraxen.OraxenAssetProvider;
+import com.kirazium.emotes.bootstrap.BundledModelInstaller;
 import com.kirazium.emotes.command.EmoteCommand;
 import com.kirazium.emotes.config.EmoteConfigLoader;
 import com.kirazium.emotes.core.EmoteDefinition;
@@ -39,6 +40,11 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         IntegrationRegistry integrations = new IntegrationRegistry(getServer().getPluginManager());
         integrations.scan();
 
+        boolean installedBundledModel = false;
+        if (integrations.available(IntegrationType.MODEL_ENGINE)) {
+            installedBundledModel = new BundledModelInstaller(this).installIfNeeded();
+        }
+
         RendererRegistry renderers = new RendererRegistry();
         if (integrations.available(IntegrationType.MODEL_ENGINE)) {
             renderers.register(new ModelEngineRenderer(integrations));
@@ -57,6 +63,10 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         logIntegrations(integrations);
 
         getLogger().info("KiraziumEmotes enabled. Loaded " + loaded + " emote(s).");
+        if (installedBundledModel) {
+            getLogger().warning("A new ModelEngine blueprint was installed after ModelEngine had already loaded.");
+            getLogger().warning("Restart the server once before testing /emote floss so ModelEngine and the resource pack can rebuild cleanly.");
+        }
     }
 
     @Override
