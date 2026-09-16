@@ -29,7 +29,6 @@ public final class EmoteManager {
 
     public PlayResult play(Player player, String emoteId) {
         UUID uuid = player.getUniqueId();
-        if (sessions.containsKey(uuid)) return PlayResult.ALREADY_PLAYING;
 
         Optional<EmoteDefinition> optionalDefinition = emotes.find(emoteId);
         if (optionalDefinition.isEmpty()) return PlayResult.NOT_FOUND;
@@ -41,14 +40,29 @@ public final class EmoteManager {
         }
 
         try {
-            RenderHandle handle = optionalRenderer.get().play(player, definition);
+            Session previous = sessions.get(uuid);
+            RenderHandle handle;
+            if (previous != null && previous.handle.switchTo(definition)) {
+                if (previous.timeoutTask != null) previous.timeoutTask.cancel();
+                handle = previous.handle;
+            } else {
+                if (previous != null) {
+                    // Do not start a second renderer if removing the first one fails.
+                    sessions.remove(uuid);
+                    if (previous.timeoutTask != null) previous.timeoutTask.cancel();
+                    previous.handle.stop();
+                }
+                handle = optionalRenderer.get().play(player, definition);
+            }
             Session session = new Session(definition, handle);
             sessions.put(uuid, session);
 
             if (definition.durationTicks() > 0) {
                 BukkitTask timeoutTask = Bukkit.getScheduler().runTaskLater(
                         plugin,
-                        () -> stop(uuid, StopReason.TIMEOUT),
+                        () -> {
+                            if (sessions.get(uuid) == session) stop(uuid, StopReason.TIMEOUT);
+                        },
                         definition.durationTicks()
                 );
                 session.timeoutTask = timeoutTask;

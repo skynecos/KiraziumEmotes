@@ -28,7 +28,7 @@ import java.util.List;
  * Server-side emote selector. This deliberately uses a Bukkit inventory so
  * KiraziumEmotes never requires a client mod or custom key binding.
  */
-public final class EmoteMenu implements Listener {
+public final class EmoteMenu implements Listener, AutoCloseable {
     private static final Component TITLE = Component.text("Kirazium Emotes", NamedTextColor.LIGHT_PURPLE);
     private static final int SIZE = 54;
     private static final int MAX_EMOTES_PER_PAGE = 45;
@@ -37,15 +37,27 @@ public final class EmoteMenu implements Listener {
     private final EmoteRegistry registry;
     private final NamespacedKey emoteIdKey;
     private final NamespacedKey actionKey;
+    private UltimateEmoteMenu ultimate;
 
     public EmoteMenu(JavaPlugin plugin, EmoteManager manager, EmoteRegistry registry) {
         this.manager = manager;
         this.registry = registry;
         this.emoteIdKey = new NamespacedKey(plugin, "emote_id");
         this.actionKey = new NamespacedKey(plugin, "menu_action");
+        var dependency = plugin.getServer().getPluginManager().getPlugin("UltimateUI");
+        if (dependency != null && dependency.isEnabled() && plugin.getConfig().getBoolean("ui.ultimateui", true)) {
+            try {
+                ultimate = new UltimateEmoteMenu(plugin, dependency, manager, registry);
+                plugin.getLogger().info("UltimateUI eight-slot emote menu enabled (left: play, right: assign).");
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError exception) {
+                plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                        "UltimateUI API is incompatible; using inventory menu.", exception);
+            }
+        }
     }
 
     public void open(Player player) {
+        if (ultimate != null) { ultimate.open(player); return; }
         MenuHolder holder = new MenuHolder();
         Inventory inventory = Bukkit.createInventory(holder, SIZE, TITLE);
         holder.inventory = inventory;
@@ -63,6 +75,8 @@ public final class EmoteMenu implements Listener {
         inventory.setItem(49, stopItem());
         player.openInventory(inventory);
     }
+
+    @Override public void close() { if (ultimate != null) ultimate.close(); }
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {

@@ -8,6 +8,7 @@ import com.kirazium.emotes.asset.nexo.NexoAssetProvider;
 import com.kirazium.emotes.asset.oraxen.OraxenAssetProvider;
 import com.kirazium.emotes.bootstrap.BundledEmoteDefaults;
 import com.kirazium.emotes.bootstrap.BundledModelInstaller;
+import com.kirazium.emotes.bootstrap.BundledUiPackInstaller;
 import com.kirazium.emotes.command.EmoteCommand;
 import com.kirazium.emotes.config.EmoteConfigLoader;
 import com.kirazium.emotes.core.EmoteDefinition;
@@ -18,6 +19,9 @@ import com.kirazium.emotes.integration.IntegrationStatus;
 import com.kirazium.emotes.integration.IntegrationType;
 import com.kirazium.emotes.listener.EmoteLifecycleListener;
 import com.kirazium.emotes.render.RendererRegistry;
+import com.kirazium.emotes.render.equipment.BukkitEquipmentVisibilityController;
+import com.kirazium.emotes.render.equipment.EquipmentVisibilityController;
+import com.kirazium.emotes.render.equipment.ProtocolLibEquipmentVisibilityController;
 import com.kirazium.emotes.render.modelengine.ModelEngineRenderer;
 import com.kirazium.emotes.ui.EmoteMenu;
 import org.bukkit.command.PluginCommand;
@@ -33,6 +37,8 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
     private EmoteManager emoteManager;
     private EmoteRegistry emoteRegistry;
     private AssetProviderRegistry assetProviders;
+    private EquipmentVisibilityController equipmentVisibility;
+    private EmoteMenu emoteMenu;
     private BundledModelInstaller.Result bundledModelResult = BundledModelInstaller.Result.NO_BUNDLED_MODEL;
 
     @Override
@@ -40,6 +46,7 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         // Paper guarantees every plugin's onLoad runs before any plugin's onEnable.
         // Installing here lets ModelEngine see a bundled blueprint during its normal startup import.
         bundledModelResult = new BundledModelInstaller(this).installDuringLoad();
+        BundledUiPackInstaller.install(this);
     }
 
     @Override
@@ -53,7 +60,8 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
 
         RendererRegistry renderers = new RendererRegistry();
         if (integrations.available(IntegrationType.MODEL_ENGINE)) {
-            renderers.register(new ModelEngineRenderer(integrations));
+            equipmentVisibility = createEquipmentVisibilityController();
+            renderers.register(new ModelEngineRenderer(integrations, equipmentVisibility));
         }
 
         assetProviders = new AssetProviderRegistry();
@@ -63,7 +71,7 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
         int loaded = new EmoteConfigLoader(this).loadInto(emoteRegistry);
         emoteManager = new EmoteManager(this, emoteRegistry, renderers);
 
-        EmoteMenu emoteMenu = new EmoteMenu(this, emoteManager, emoteRegistry);
+        emoteMenu = new EmoteMenu(this, emoteManager, emoteRegistry);
         getServer().getPluginManager().registerEvents(new EmoteLifecycleListener(emoteManager), this);
         getServer().getPluginManager().registerEvents(emoteMenu, this);
         registerCommand(emoteMenu);
@@ -79,10 +87,32 @@ public final class KiraziumEmotesPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (emoteMenu != null) emoteMenu.close();
         if (emoteManager != null) {
             emoteManager.stopAll();
         }
+        if (equipmentVisibility != null) {
+            equipmentVisibility.close();
+        }
         getServer().getServicesManager().unregisterAll(this);
+    }
+
+    private EquipmentVisibilityController createEquipmentVisibilityController() {
+        if (getServer().getPluginManager().isPluginEnabled("ProtocolLib")) {
+            try {
+                EquipmentVisibilityController controller =
+                        new ProtocolLibEquipmentVisibilityController(this);
+                getLogger().info("ProtocolLib equipment packet suppression enabled.");
+                return controller;
+            } catch (RuntimeException | LinkageError exception) {
+                getLogger().log(java.util.logging.Level.WARNING,
+                        "Could not initialize ProtocolLib equipment suppression; using one-shot Bukkit updates.",
+                        exception);
+            }
+        } else {
+            getLogger().warning("ProtocolLib is not installed; equipment can only be hidden with one-shot Bukkit updates.");
+        }
+        return new BukkitEquipmentVisibilityController();
     }
 
     private void registerAssetProviders(IntegrationRegistry integrations) {

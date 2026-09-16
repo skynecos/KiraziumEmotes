@@ -6,6 +6,7 @@ import com.kirazium.emotes.integration.IntegrationRegistry;
 import com.kirazium.emotes.integration.IntegrationType;
 import com.kirazium.emotes.render.EmoteRenderer;
 import com.kirazium.emotes.render.RenderHandle;
+import com.kirazium.emotes.render.equipment.EquipmentVisibilityController;
 import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.entity.data.BukkitEntityData;
 import com.ticxo.modelengine.api.model.ActiveModel;
@@ -17,11 +18,7 @@ import com.ticxo.modelengine.api.model.bone.type.UserLimb;
 import com.ticxo.modelengine.api.nms.entity.EntityHandler;
 import com.ticxo.modelengine.api.nms.entity.wrapper.BodyRotationController;
 import com.ticxo.modelengine.api.nms.entity.wrapper.TrackedEntity;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.EntityEquipment;
-import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -30,20 +27,15 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ModelEngineRenderer implements EmoteRenderer {
-    private static final ItemStack AIR = new ItemStack(Material.AIR);
-    private static final EquipmentSlot[] SELF_HIDDEN_EQUIPMENT = {
-            EquipmentSlot.HEAD,
-            EquipmentSlot.CHEST,
-            EquipmentSlot.LEGS,
-            EquipmentSlot.FEET,
-            EquipmentSlot.HAND,
-            EquipmentSlot.OFF_HAND
-    };
-
     private final IntegrationRegistry integrations;
+    private final EquipmentVisibilityController equipmentVisibility;
 
-    public ModelEngineRenderer(IntegrationRegistry integrations) {
+    public ModelEngineRenderer(
+            IntegrationRegistry integrations,
+            EquipmentVisibilityController equipmentVisibility
+    ) {
         this.integrations = integrations;
+        this.equipmentVisibility = equipmentVisibility;
     }
 
     @Override
@@ -70,6 +62,9 @@ public final class ModelEngineRenderer implements EmoteRenderer {
 
         if (ModelEngineAPI.getBlueprint(definition.modelId()) == null) {
             throw new IllegalStateException("ModelEngine blueprint '" + definition.modelId() + "' is not registered");
+        }
+        if (ModelEngineAPI.getBlueprint(definition.modelId()).getAnimationOrRef(definition.animation()) == null) {
+            throw new IllegalArgumentException("Animation is missing: " + definition.animation());
         }
 
         ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(player);
@@ -107,11 +102,10 @@ public final class ModelEngineRenderer implements EmoteRenderer {
             modeledEntity.setBaseEntityVisible(false);
 
             // ModelEngine cannot despawn a player from their own client because that
-            // entity owns the camera. Forced invisibility hides the skin but vanilla
-            // equipment remains visible and keeps the unanimated player yaw. Hide it
-            // only from the owning client; the real inventory and combat stats remain
-            // unchanged and other viewers already receive the base-entity despawn.
-            hideSelfEquipment(player);
+            // entity owns the camera. Forced invisibility hides the skin, but vanilla
+            // equipment is rendered separately and keeps the unanimated player pose.
+            // Suppress that equipment for every viewer without changing the inventory.
+            equipmentVisibility.hide(player);
 
             // Emotes must not replace the player's vanilla hitbox. The boolean is
             // overrideHitbox in ModelEngine R4.1.0/R4.1.1, not a render toggle.
@@ -156,13 +150,41 @@ public final class ModelEngineRenderer implements EmoteRenderer {
 
         boolean removeForcedSelfPairing = forcedSelfPairing;
         AtomicBoolean stopped = new AtomicBoolean(false);
-        return () -> {
-            if (!stopped.compareAndSet(false, true)) return;
-            cleanup(
+        return new RenderHandle() {
+            private EmoteDefinition current = definition;
+
+            @Override
+            public boolean switchTo(EmoteDefinition next) {
+                if (stopped.get() || !id().equals(next.renderer()) || !current.modelId().equals(next.modelId())) {
+                    return false;
+                }
+                if (activeModel.getBlueprint().getAnimationOrRef(next.animation()) == null) {
+                    throw new IllegalArgumentException("Animation is missing: " + next.animation());
+                }
+                var handler = activeModel.getAnimationHandler();
+                handler.forceStopAnimation(current.animation());
+                try {
+                    handler.playAnimation(next.animation(), next.lerpIn(), next.lerpOut(), next.speed(), true);
+                    if (!handler.isPlayingAnimation(next.animation())) {
+                        throw new IllegalStateException("ModelEngine did not start " + next.animation());
+                    }
+                    current = next;
+                    return true;
+                } catch (RuntimeException failure) {
+                    handler.forceStopAnimation(next.animation());
+                    handler.playAnimation(current.animation(), current.lerpIn(), current.lerpOut(), current.speed(), true);
+                    throw failure;
+                }
+            }
+
+            @Override
+            public void stop() {
+                if (!stopped.compareAndSet(false, true)) return;
+                cleanup(
                     player,
                     modeledEntity,
                     activeModel,
-                    definition.animation(),
+                    current.animation(),
                     previousBaseVisibility,
                     rotationController,
                     previousPlayerMode,
@@ -170,7 +192,8 @@ public final class ModelEngineRenderer implements EmoteRenderer {
                     previousForcedInvisible,
                     trackedEntity,
                     removeForcedSelfPairing
-            );
+                );
+            }
         };
     }
 
@@ -222,7 +245,7 @@ public final class ModelEngineRenderer implements EmoteRenderer {
         }
     }
 
-    private static void cleanup(
+    private void cleanup(
             Player player,
             ModeledEntity modeledEntity,
             ActiveModel activeModel,
@@ -240,38 +263,25 @@ public final class ModelEngineRenderer implements EmoteRenderer {
                 activeModel.getAnimationHandler().stopAnimation(animation);
             }
         } finally {
-            if (modeledEntity.getModel(activeModel.getBlueprint().getName()).orElse(null) == activeModel) {
-                modeledEntity.removeModel(activeModel.getBlueprint().getName());
+            try {
+                if (modeledEntity.getModel(activeModel.getBlueprint().getName()).orElse(null) == activeModel) {
+                    modeledEntity.removeModel(activeModel.getBlueprint().getName());
+                }
+                if (!activeModel.isDestroyed()) {
+                    activeModel.destroy();
+                }
+                if (removeForcedSelfPairing) {
+                    trackedEntity.removeForcedPairing(player.getUniqueId());
+                }
+                entityHandler.setForcedInvisible(player, previousForcedInvisible);
+                modeledEntity.setBaseEntityVisible(previousBaseVisibility);
+                rotationController.setPlayerMode(previousPlayerMode);
+            } finally {
+                // Always re-send the player's current equipment, including items that
+                // changed while the emote was playing, even if model cleanup fails.
+                equipmentVisibility.restore(player);
             }
-            if (!activeModel.isDestroyed()) {
-                activeModel.destroy();
-            }
-            if (removeForcedSelfPairing) {
-                trackedEntity.removeForcedPairing(player.getUniqueId());
-            }
-            entityHandler.setForcedInvisible(player, previousForcedInvisible);
-            modeledEntity.setBaseEntityVisible(previousBaseVisibility);
-            rotationController.setPlayerMode(previousPlayerMode);
-            restoreSelfEquipment(player);
         }
-    }
-
-    private static void hideSelfEquipment(Player player) {
-        for (EquipmentSlot slot : SELF_HIDDEN_EQUIPMENT) {
-            player.sendEquipmentChange(player, slot, AIR);
-        }
-    }
-
-    private static void restoreSelfEquipment(Player player) {
-        if (!player.isOnline()) return;
-
-        EntityEquipment equipment = player.getEquipment();
-        player.sendEquipmentChange(player, EquipmentSlot.HEAD, equipment.getHelmet());
-        player.sendEquipmentChange(player, EquipmentSlot.CHEST, equipment.getChestplate());
-        player.sendEquipmentChange(player, EquipmentSlot.LEGS, equipment.getLeggings());
-        player.sendEquipmentChange(player, EquipmentSlot.FEET, equipment.getBoots());
-        player.sendEquipmentChange(player, EquipmentSlot.HAND, equipment.getItemInMainHand());
-        player.sendEquipmentChange(player, EquipmentSlot.OFF_HAND, equipment.getItemInOffHand());
     }
 
     private record SkinBinding(

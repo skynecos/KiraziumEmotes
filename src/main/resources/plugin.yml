@@ -10,6 +10,8 @@ softdepend:
   - Nexo
   - ItemsAdder
   - Oraxen
+  - ProtocolLib
+  - UltimateUI
 commands:
   emote:
     aliases: [emotes]

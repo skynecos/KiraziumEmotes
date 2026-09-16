@@ -39,6 +39,7 @@ ModelEngine player-limb models require ModelEngine's core shaders. Nexo automati
 - Paper 26.1.2 / Java 25 baseline.
 - ModelEngine R4.1.1 renderer.
 - ModelEngine PLAYER_LIMB player-skin binding.
+- ProtocolLib-backed visual suppression of armor and held items while an emote is active; inventory and combat stats are unchanged.
 - Safe private blueprint installer that runs during plugin load.
 - Safe bundled-emote config merger.
 - Runtime detection for ModelEngine, Nexo, ItemsAdder and Oraxen.
@@ -55,6 +56,7 @@ ModelEngine player-limb models require ModelEngine's core shaders. Nexo automati
 | Paper | 26.1.2 |
 | Java | 25 |
 | ModelEngine | R4.1.1 |
+| ProtocolLib | 5.4.0 compile API; installed 5.5.0 API inspected, client test required |
 | Nexo | 1.28.0 adapter target |
 | ItemsAdder API | 4.0.18-beta-10 |
 | Oraxen | 1.218.0 adapter target |
@@ -72,6 +74,27 @@ Compatibility targets are development targets, not blanket runtime claims for ev
 - `command` — `/emote` and `/emotes` entry points.
 
 ## Status
+
+### Transparent quick menu
+
+With UltimateUI enabled, `/emote` opens eight square shortcuts around an empty center.
+Left-click plays; right-click opens the registered emote choices and assigns one to that shortcut.
+Assignments persist per UUID in `plugins/KiraziumEmotes/wheels/`. Selecting an existing shortcut
+swaps the two assignments. Without UltimateUI the original inventory selector remains available.
+Set `ui.ultimateui: false` to explicitly use that fallback.
+
+The optional bridge uses UltimateUI's public builder and click event through reflection; it does
+not redistribute its plugin or resource pack. API signatures and close/teleport behavior were
+inspected against the supplied UltimateUI Beta 1.3.3 JAR. Menu rendering still needs a client test.
+The private build installs only its own icon ZIP into Nexo's `pack/external_packs/` directory;
+UltimateUI's own resource pack must also be supplied to clients. Regenerate the combined server
+pack after adding/updating icons. Do not replace ModelEngine or other packs with the icon-only ZIP.
+
+Emote replacement validates the target first, reuses the active ModelEngine model where possible,
+and cancels the previous timeout. Closing UltimateUI precedes playback because closing its camera
+teleports the player. `gradle check` runs server-independent replacement/timeout/persistence checks;
+these checks do not claim Minecraft-client visual coverage. Licensed animations are kept outside
+this repository and outside public CI artifacts.
 
 Early development (`0.1.0-SNAPSHOT`). CI compiles the Paper plugin on Java 25 before a test artifact is considered usable. Runtime validation on the target server is still required before calling a build production-ready.
 

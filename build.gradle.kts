@@ -16,6 +16,7 @@ repositories {
 }
 
 dependencies {
+    testImplementation("io.papermc.paper:paper-api:${property("paperVersion")}")
     compileOnly("io.papermc.paper:paper-api:${property("paperVersion")}")
     compileOnly("com.ticxo.modelengine:ModelEngine:${property("modelEngineVersion")}") {
         isTransitive = false
@@ -27,6 +28,9 @@ dependencies {
         isTransitive = false
     }
     compileOnly("io.th0rgal:oraxen:${property("oraxenVersion")}") {
+        isTransitive = false
+    }
+    compileOnly("net.dmulloy2:ProtocolLib:${property("protocolLibVersion")}") {
         isTransitive = false
     }
 }
@@ -50,3 +54,10 @@ tasks.processResources {
 tasks.jar {
     archiveBaseName.set("KiraziumEmotes")
 }
+
+val regressionTest by tasks.registering(JavaExec::class) {
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.kirazium.emotes.RegressionChecks")
+}
+tasks.check { dependsOn(regressionTest) }
