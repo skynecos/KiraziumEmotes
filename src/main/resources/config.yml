@@ -1,0 +1,6 @@
+debug: false
+
+# Use UltimateUI's transparent, server-side menu when its public API is available.
+# Requires UltimateUI's own resource pack AND the private Kirazium menu icon pack.
+ui:
+  ultimateui: true

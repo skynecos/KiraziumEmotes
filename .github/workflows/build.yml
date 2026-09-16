@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - dev/bootstrap-core
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Setup Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.7.1'
+
+      - name: Build server plugin
+        run: gradle clean build --stacktrace --warning-mode all
+
+      - name: Upload server plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: KiraziumEmotes-server
+          path: build/libs/KiraziumEmotes-*.jar
+          if-no-files-found: error
+

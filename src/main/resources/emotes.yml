@@ -1,0 +1,20 @@
+# KiraziumEmotes emote definitions.
+# KiraziumEmotes does not copy emote names or animations from menu reference images.
+# Add only animations that actually exist in the selected renderer.
+#
+# Format example (disabled):
+# emotes:
+#   <id>:
+#     display-name: "<display name>"
+#     renderer: modelengine
+#     model: <ModelEngine model id>
+#     animation: <animation id>
+#     duration-ticks: 0
+#     lerp-in: 0.10
+#     lerp-out: 0.10
+#     speed: 1.0
+#     cancel-on-move: true
+#     cancel-on-damage: true
+#     cancel-on-teleport: true
+
+emotes: {}
