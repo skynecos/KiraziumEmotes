@@ -55,9 +55,13 @@ tasks.jar {
     archiveBaseName.set("KiraziumEmotes")
 }
 
-val regressionTest by tasks.registering(JavaExec::class) {
+val regressionTest = tasks.register<JavaExec>("regressionTest") {
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("com.kirazium.emotes.RegressionChecks")
 }
 tasks.check { dependsOn(regressionTest) }
+// RegressionChecks is an executable assertion harness, not a JUnit test class.
+// Its nonzero exit fails check via regressionTest; allow the unused JUnit scanner to be empty.
+tasks.test { failOnNoDiscoveredTests = false }
+
